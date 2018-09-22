@@ -1,86 +1,133 @@
-## Makefile
+################
+### Makefile ###
+################
+
+# Traditional targets
+.PHONY: all build build-docker build-post build-pre clean clean-all clean-docker clean-post clean-pre install install-docker install-post install-pre uninstall uninstall-docker uninstall-post uninstall-pre
+# User targets
+.PHONY: build-image clean-image clean-test install-network install-volume remove run status status-container status-image status-network status-volume stop test uninstall-network uninstall-volume
+
+######################
+### Config options ###
+######################
+
+# General options
 SHELL=/bin/bash
 
 # Config options
-NAME=docker-makefile-boilerplate
-TAG=0.0-dev
+DOCKER_NAME=docker-makefile-boilerplate
+DOCKER_TAG=0.0-dev
+
+# Volume options
+DOCKER_VOLUME_NAME=docker-makefile-boilerplate-volume
 
 # Docker options
-BUILD_CONTEXT=.
-DOCKERFILE=Dockerfile
+DOCKER_BUILD_CONTEXT=.
+DOCKER_BUILD_DOCKERFILE=Dockerfile
 
 # Network options
-DEFAULT_NETWORK=docker-makefile-boilerplate-net
-DEFAULT_SUBNET=10.10.10.0/24
-DEFAULT_GATEWAY=10.10.10.1
+DOCKER_NETWORK_NAME=docker-makefile-boilerplate-net
+DOCKER_NETWORK_SUBNET=10.10.10.0/24
+DOCKER_NETWORK_GATEWAY=10.10.10.1
 
-all: build run
-build: build-image build-network
-clean: stop clean-container clean-network clean-image
+###########################
+### Operational targets ###
+###########################
+
+# Traditional targets 
+all: build install run
+build: build-pre build-docker build-post
+clean: stop remove uninstall clean-pre clean-docker clean-post
+clean-all: clean
+install: install-pre install-docker install-post
+uninstall: stop remove uninstall-pre uninstall-docker uninstall-post
+# build the docker contianer
+build-pre:
+build-docker: build-image
+build-post:
+# remove the container
+clean-pre:
+clean-docker: clean-image
+clean-post:
+# set up volumes, networks, etc
+install-pre:
+install-docker: install-network install-volume
+install-post:
+# remove volumes, networks, etc
+uninstall-pre:
+uninstall-docker: uninstall-network uninstall-volume
+uninstall-post:
+# special targets
 clean-test: clean build test
-status: status-image status-network status-container
+status: status-container status-network status-volume status-image
+
+############################
+### User-defined targets ###
+############################
 
 build-image:
 	@echo ">>> $@"
 	docker build \
-		-t="${NAME}:${TAG}" \
-		-f="${DOCKERFILE}" \
+		-t="${DOCKER_NAME}:${DOCKER_TAG}" \
+		-f="${DOCKER_BUILD_DOCKERFILE}" \
 		${BUILD_CONTEXT}
-	@echo "=== $@ DONE\n"
-
-build-network:
-	@echo ">>> $@"
-	docker network create \
-		--driver="bridge" \
-		--subnet="${DEFAULT_SUBNET}" \
-		--ip-range="${DEFAULT_SUBNET}" \
-		--gateway="${DEFAULT_GATEWAY}" \
-		${DEFAULT_NETWORK}
-	@echo "=== $@ DONE\n"
-
-clean-container:
-	@echo ">>> $@"
-	-docker rm ${NAME}
 	@echo "=== $@ DONE\n"
 
 clean-image:
 	@echo ">>> $@"
-	-docker image rm ${NAME}:${TAG}
+	-docker image rm ${DOCKER_NAME}:${DOCKER_TAG}
 	@echo "=== $@ DONE\n"
 
-clean-network:
+install-network:
 	@echo ">>> $@"
-	-docker network rm ${DEFAULT_NETWORK}
+	docker network create \
+		--driver="bridge" \
+		--subnet="${DOCKER_NETWORK_SUBNET}" \
+		--ip-range="${DOCKER_NETWORK_SUBNET}" \
+		--gateway="${DOCKER_NETWORK_GATEWAY}" \
+		${DOCKER_NETWORK_NAME}
+	@echo "=== $@ DONE\n"
+
+install-volume:
+
+remove:
+	@echo ">>> $@"
+	-docker rm ${DOCKER_NAME}
 	@echo "=== $@ DONE\n"
 
 run:
 	@echo ">>> $@"
 	docker run \
 		-d \
-		--name "${NAME}" \
-		--net "${DEFAULT_NETWORK}" \
+		--name "${DOCKER_NAME}" \
+		--net "${DOCKER_NETWORK_NAME}" \
 		--publish-all \
-		${NAME}:${TAG}
+		${DOCKER_NAME}:${DOCKER_TAG}
 	@echo "=== $@ DONE\n"
 
 status-container:
 	@echo ">>> $@"
-	-docker container inspect ${NAME} --format '{{ .State.Running }}'
+	-docker container inspect ${DOCKER_NAME} --format '{{ .State.Running }}'
 	@echo "=== $@ DONE\n"
 
 status-image:
 	@echo ">>> $@"
-	-docker image inspect ${NAME}:${TAG} --format '{{ .Created }}'
+	-docker image inspect ${DOCKER_NAME}:${DOCKER_TAG} --format '{{ .Created }}'
 	@echo "=== $@ DONE\n"
 
 status-network:
 	@echo ">>> $@"
-	-docker network inspect ${DEFAULT_NETWORK} --format '{{ .Created }}'
+	-docker network inspect ${DOCKER_NETWORK_NAME} --format '{{ .Created }}'
+	@echo "=== $@ DONE\n"
+
+status-volume:
+	@echo ">>> $@"
+	-docker volume inspect ${DOCKER_VOLUME_NAME} --format '{{ .CreatedAt }}'
 	@echo "=== $@ DONE\n"
 
 stop:
 	@echo ">>> $@"
-	-docker stop ${NAME}
+	-docker stop ${DOCKER_NAME}
 	@echo "=== $@ DONE\n"
 
 test:
@@ -88,6 +135,13 @@ test:
 	docker run \
 		-it \
 		--rm \
-		--name "${NAME}_TEST-CONFIG" \
-		${NAME}:${TAG} /usr/sbin/nginx -t -c /etc/nginx/nginx.conf
+		--name "${DOCKER_NAME}_TEST-CONFIG" \
+		${DOCKER_NAME}:${DOCKER_TAG} /usr/sbin/nginx -t -c /etc/nginx/nginx.conf
 	@echo "=== $@ DONE\n"
+
+uninstall-network:
+	@echo ">>> $@"
+	-docker network rm ${DOCKER_NETWORK_NAME}
+	@echo "=== $@ DONE\n"
+
+uninstall-volume:
