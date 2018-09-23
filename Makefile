@@ -19,13 +19,15 @@ DOCKER_NAME=docker-makefile-boilerplate
 DOCKER_TAG=0.0-dev
 
 # Volume options
-DOCKER_VOLUME_NAME=docker-makefile-boilerplate-volume
+DOCKER_VOLUME_NAME=${DOCKER_NAME}-data
+DOCKER_VOLUME_PATH=/data
 
 # Docker options
 DOCKER_BUILD_CONTEXT=.
 DOCKER_BUILD_DOCKERFILE=Dockerfile
 
 # Network options
+DOCKER_NETWORK_EXTERNAL_IP=10.10.10.10
 DOCKER_NETWORK_NAME=docker-makefile-boilerplate-net
 DOCKER_NETWORK_SUBNET=10.10.10.0/24
 DOCKER_NETWORK_GATEWAY=10.10.10.1
@@ -66,20 +68,20 @@ status: status-container status-network status-volume status-image
 ############################
 
 build-image:
-	@echo ">>> $@"
+	@echo ">>> $@: Building image..."
 	docker build \
 		-t="${DOCKER_NAME}:${DOCKER_TAG}" \
 		-f="${DOCKER_BUILD_DOCKERFILE}" \
-		${BUILD_CONTEXT}
+		${DOCKER_BUILD_CONTEXT}
 	@echo "=== $@ DONE\n"
 
 clean-image:
-	@echo ">>> $@"
+	@echo ">>> $@: Removing image..."
 	-docker image rm ${DOCKER_NAME}:${DOCKER_TAG}
 	@echo "=== $@ DONE\n"
 
 install-network:
-	@echo ">>> $@"
+	@echo ">>> $@: Creating networks..."
 	docker network create \
 		--driver="bridge" \
 		--subnet="${DOCKER_NETWORK_SUBNET}" \
@@ -89,49 +91,52 @@ install-network:
 	@echo "=== $@ DONE\n"
 
 install-volume:
+	@echo ">>> $@: Creating volumes..."
+	@echo "=== $@ DONE\n"
 
 remove:
-	@echo ">>> $@"
+	@echo ">>> $@: Removing containers..."
 	-docker rm ${DOCKER_NAME}
 	@echo "=== $@ DONE\n"
 
 run:
-	@echo ">>> $@"
+	@echo ">>> $@: Running containers..."
 	docker run \
 		-d \
 		--name "${DOCKER_NAME}" \
 		--net "${DOCKER_NETWORK_NAME}" \
-		--publish-all \
+		--publish "${DOCKER_NETWORK_EXTERNAL_IP}:80:80" \
+		--mount "type=volume,src=${DOCKER_VOUME_NAME},dst=${DOCKER_VOLUME_PATH}" \
 		${DOCKER_NAME}:${DOCKER_TAG}
 	@echo "=== $@ DONE\n"
 
 status-container:
-	@echo ">>> $@"
+	@echo ">>> $@: Status: Container"
 	-docker container inspect ${DOCKER_NAME} --format '{{ .State.Running }}'
 	@echo "=== $@ DONE\n"
 
 status-image:
-	@echo ">>> $@"
+	@echo ">>> $@: Status: Image"
 	-docker image inspect ${DOCKER_NAME}:${DOCKER_TAG} --format '{{ .Created }}'
 	@echo "=== $@ DONE\n"
 
 status-network:
-	@echo ">>> $@"
+	@echo ">>> $@: Status: Network"
 	-docker network inspect ${DOCKER_NETWORK_NAME} --format '{{ .Created }}'
 	@echo "=== $@ DONE\n"
 
 status-volume:
-	@echo ">>> $@"
+	@echo ">>> $@: Status: Volume"
 	-docker volume inspect ${DOCKER_VOLUME_NAME} --format '{{ .CreatedAt }}'
 	@echo "=== $@ DONE\n"
 
 stop:
-	@echo ">>> $@"
+	@echo ">>> $@: Stopping containers..."
 	-docker stop ${DOCKER_NAME}
 	@echo "=== $@ DONE\n"
 
 test:
-	@echo ">>> $@"
+	@echo ">>> $@: Testing configuration..."
 	docker run \
 		-it \
 		--rm \
@@ -140,8 +145,11 @@ test:
 	@echo "=== $@ DONE\n"
 
 uninstall-network:
-	@echo ">>> $@"
+	@echo ">>> $@: Removing networks..."
 	-docker network rm ${DOCKER_NETWORK_NAME}
 	@echo "=== $@ DONE\n"
 
 uninstall-volume:
+	@echo ">>> $@: Removing volumes..."
+	-docker volume rm ${DOCKER_VOLUME_NAME}
+	@echo "=== $@ DONE\n"
